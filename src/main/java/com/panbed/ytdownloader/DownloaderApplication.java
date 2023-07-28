@@ -11,10 +11,11 @@ public class DownloaderApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(DownloaderApplication.class.getResource("view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 640, 400);
-        stage.setTitle("ytDownloader");
+        Scene scene = new Scene(fxmlLoader.load(), 600, 400);
+        stage.setTitle("youtube-fxdownloader");
         stage.setScene(scene);
         stage.show();
+        System.out.println("Showing UI...");
     }
 
     public static void main(String[] args) {
