@@ -15,7 +15,6 @@ public class DownloaderApplication extends Application {
         stage.setTitle("youtube-fxdownloader");
         stage.setScene(scene);
         stage.show();
-        System.out.println("Showing UI...");
     }
 
     public static void main(String[] args) {

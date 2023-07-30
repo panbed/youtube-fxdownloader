@@ -3,27 +3,32 @@ package com.panbed.ytdownloader;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.TextField;
+import javafx.scene.Node;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.scene.text.Text;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.Date;
 import java.util.Formattable;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import org.json.*;
 import org.apache.commons.io.*;
@@ -38,6 +43,12 @@ public class DownloaderController {
     public Label titleLabel;
     public Label authorLabel;
     public ImageView thumbBackgroundPreview;
+
+    public Tab downloaderTab;
+    public Tab logTab;
+    public TextArea logArea;
+    public Button killButton;
+    public TabPane tabPane;
 
     // latest yt-dlp
     // https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
@@ -98,13 +109,18 @@ public class DownloaderController {
     @FXML
     protected void onDownloadClick() throws IOException {
         String id = getVideoID(urlTextField.getText());
-//        System.out.println(downloadVideo(id));
-        Task<Void> downloadVideoTask = new Task<Void>() {
+
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Choose directory to save to");
+        directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+        File selectedDirectory = directoryChooser.showDialog(downloadButton.getScene().getWindow());
+
+        Task<Void> downloadVideoTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
                 downloadButton.setDisable(true);
                 urlButton.setDisable(true);
-                downloadVideo(id);
+                downloadVideo(selectedDirectory, id);
                 return null;
             }
         };
@@ -113,6 +129,22 @@ public class DownloaderController {
             downloadButton.setDisable(false);
             urlButton.setDisable(false);
             System.out.println("done!");
+            killButton.setDisable(true);
+            tabPane.getSelectionModel().select(downloaderTab);
+        });
+
+        downloadVideoTask.setOnFailed(e -> {
+            System.out.println("failure .........");
+            downloadButton.setDisable(false);
+            urlButton.setDisable(false);
+            killButton.setDisable(true);
+        });
+
+        downloadVideoTask.setOnCancelled(e -> {
+            System.out.println("canceled ............");
+            downloadButton.setDisable(false);
+            urlButton.setDisable(false);
+            killButton.setDisable(true);
         });
 
         Thread thread = new Thread(downloadVideoTask);
@@ -127,18 +159,55 @@ public class DownloaderController {
         return new JSONObject(json);
     }
 
-    public String downloadVideo(String id) throws IOException {
-        String exeLocation = "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe";
-        String command = String.format("%s -x --audio-format mp3 %s", exeLocation, id);
-        ProcessBuilder pb = new ProcessBuilder(
-                exeLocation,
-                "-x",
-                "--audio-format",
-                "mp3",
-                id
+    public void updateLog(String text) {
+        Platform.runLater(() -> {
+            logArea.clear();
+            logArea.appendText(text);
+        });
+    }
 
-        ).redirectErrorStream(true);
+    public String downloadVideo(File location, String id) throws IOException {
+        String exeLocation = "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe";
+        String directoryLocation;
+
+        if (location != null) {
+            directoryLocation = location.getAbsolutePath();
+        }
+        else {
+            directoryLocation = System.getProperty("user.dir");
+        }
+
+
+
+        ProcessBuilder pb = new ProcessBuilder(exeLocation, "-x", "--audio-format", "mp3", id, "-P", String.format("home:%s", directoryLocation)).redirectErrorStream(true);
         Process process = pb.start();
+
+        tabPane.getSelectionModel().select(logTab);
+
+        killButton.setDisable(false);
+        killButton.setOnAction(event -> {
+            process.children().forEach(processHandle -> processHandle.destroy());
+            process.destroy();
+            try {
+                Thread.sleep(25); // this is maybe bad i think
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            String coolSkull =
+                      """
+                      _____
+                     /     \\
+                    | () () |
+                     \\  ^  /
+                      |||||
+                      |||||
+                      """;
+            Platform.runLater(() -> {
+                logArea.appendText(String.format("%s\n\n** HERE LIES YT-DLP **\n\nTime of death: %s", coolSkull, new Date()));
+            });
+
+        });
+
         StringBuilder result = new StringBuilder(80);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             while (true) {
@@ -146,8 +215,16 @@ public class DownloaderController {
                 if (line == null)
                     break;
                 result.append(line).append(System.getProperty("line.separator"));
+                updateLog(String.valueOf(result));
             }
         }
+
+//        try (InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream())) {
+//            int c;
+//            while ((c = inputStreamReader.read()) >= 0) {
+//                updateLog(String.valueOf((char) c));
+//            }
+//        }
         return result.toString();
     }
 

@@ -1,117 +1,132 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.Double?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.effect.GaussianBlur?>
 <?import javafx.scene.effect.Light.Distant?>
 <?import javafx.scene.effect.Lighting?>
 <?import javafx.scene.effect.Reflection?>
+<?import javafx.scene.effect.Shadow?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.shape.Polygon?>
 <?import javafx.scene.text.Font?>
 
-<StackPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.panbed.ytdownloader.DownloaderController">
-   <children>
-      <Pane>
-         <children>
-            <ImageView fx:id="thumbBackgroundPreview" fitHeight="150.0" fitWidth="200.0" layoutX="200.0" layoutY="125.0" pickOnBounds="true" scaleX="3.5" scaleY="3.5">
-               <effect>
-                  <GaussianBlur radius="5.55" />
-               </effect>
-            </ImageView>
-         </children>
-         <effect>
-            <Lighting bumpInput="$null" diffuseConstant="2.0" specularConstant="1.56" specularExponent="15.86" surfaceScale="2.88">
-               <light>
-                  <Light.Distant azimuth="0.0" elevation="49.14" />
-               </light>
-            </Lighting>
-         </effect>
-      </Pane>
-      <StackPane opacity="0.4" scaleX="2.0" scaleY="2.0" visible="false">
-         <children>
-            <Circle opacity="0.15" radius="100.0" stroke="BLACK" strokeType="INSIDE" strokeWidth="0.0" />
-            <Polygon fill="WHITE" opacity="0.25" rotate="90.0" stroke="BLACK" strokeType="INSIDE" strokeWidth="0.0" translateX="10.0">
-              <points>
-                <Double fx:value="-50.0" />
-                <Double fx:value="40.0" />
-                <Double fx:value="50.0" />
-                <Double fx:value="40.0" />
-                <Double fx:value="0.0" />
-                <Double fx:value="-60.0" />
-              </points>
-            </Polygon>
-         </children>
-      </StackPane>
-      <BorderPane prefHeight="400.0" prefWidth="600.0">
-         <bottom>
-            <HBox prefHeight="40.0" prefWidth="640.0" spacing="25.0" style="-fx-background-color: white;" BorderPane.alignment="CENTER">
+<TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.panbed.ytdownloader.DownloaderController">
+   <tabs>
+    <Tab fx:id="downloaderTab" text="Downloader">
+         <content>
+            <StackPane>
                <children>
-                  <TextField fx:id="urlTextField" prefHeight="25.0" prefWidth="212.0" promptText="Enter URL..." />
-                  <Region prefHeight="25.0" prefWidth="144.0" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="urlButton" mnemonicParsing="false" onAction="#onSubmitClick" text="Load URL" />
-                  <Button fx:id="downloadButton" disable="true" mnemonicParsing="false" onAction="#onDownloadClick" text="Download" />
+                  <AnchorPane StackPane.alignment="CENTER">
+                     <children>
+                        <ImageView fx:id="thumbBackgroundPreview" fitHeight="150.0" fitWidth="200.0" layoutX="200.0" layoutY="125.0" pickOnBounds="true" scaleX="4.0" scaleY="4.0">
+                           <effect>
+                              <GaussianBlur radius="5.55" />
+                           </effect>
+                        </ImageView>
+                     </children>
+                     <effect>
+                        <Lighting specularConstant="0.99" specularExponent="12.41">
+                           <bumpInput>
+                              <Shadow height="0.0" radius="0.0" width="0.0" />
+                           </bumpInput>
+                           <light>
+                              <Light.Distant />
+                           </light>
+                        </Lighting>
+                     </effect>
+                  </AnchorPane>
+                  <BorderPane prefHeight="400.0" prefWidth="600.0">
+                     <bottom>
+                        <HBox prefHeight="40.0" prefWidth="640.0" spacing="25.0" style="-fx-background-color: white;" BorderPane.alignment="CENTER">
+                           <children>
+                              <TextField fx:id="urlTextField" prefHeight="25.0" prefWidth="212.0" promptText="Enter URL..." />
+                              <Region prefHeight="25.0" prefWidth="144.0" HBox.hgrow="ALWAYS" />
+                              <Button fx:id="urlButton" mnemonicParsing="false" onAction="#onSubmitClick" text="Load URL" />
+                              <Button fx:id="downloadButton" disable="true" mnemonicParsing="false" onAction="#onDownloadClick" text="Download" />
+                           </children>
+                           <padding>
+                              <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                           </padding>
+                        </HBox>
+                     </bottom>
+                     <left>
+                        <ImageView fx:id="thumbPreview" fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
+                           <BorderPane.margin>
+                              <Insets left="40.0" />
+                           </BorderPane.margin>
+                           <effect>
+                              <Reflection fraction="0.43" />
+                           </effect>
+                        </ImageView>
+                     </left>
+                     <center>
+                        <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="4.0" BorderPane.alignment="CENTER">
+                           <children>
+                              <Label fx:id="titleLabel" nodeOrientation="LEFT_TO_RIGHT" text="fxdownloader" wrapText="true">
+                                 <font>
+                                    <Font size="24.0" />
+                                 </font>
+                              </Label>
+                              <Label fx:id="authorLabel" nodeOrientation="LEFT_TO_RIGHT" text="Enter a URL, then select &quot;Load URL&quot;">
+                                 <VBox.margin>
+                                    <Insets />
+                                 </VBox.margin>
+                              </Label>
+                           </children>
+                           <padding>
+                              <Insets left="40.0" right="20.0" />
+                           </padding>
+                           <opaqueInsets>
+                              <Insets />
+                           </opaqueInsets>
+                           <BorderPane.margin>
+                              <Insets right="40.0" />
+                           </BorderPane.margin>
+                        </VBox>
+                     </center>
+                  </BorderPane>
                </children>
-               <padding>
-                  <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-               </padding>
-            </HBox>
-         </bottom>
-         <left>
-            <ImageView fx:id="thumbPreview" fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
-               <BorderPane.margin>
-                  <Insets left="40.0" top="30.0" />
-               </BorderPane.margin>
-               <effect>
-                  <Reflection fraction="0.43" />
-               </effect>
-            </ImageView>
-         </left>
-         <center>
-            <VBox alignment="CENTER_LEFT" prefHeight="200.0" prefWidth="100.0" spacing="4.0" BorderPane.alignment="CENTER">
-               <children>
-                  <Label fx:id="titleLabel" nodeOrientation="LEFT_TO_RIGHT" text="fxdownloader" wrapText="true">
-                     <font>
-                        <Font size="24.0" />
-                     </font>
-                  </Label>
-                  <Label fx:id="authorLabel" nodeOrientation="LEFT_TO_RIGHT" text="Enter a URL, then select &quot;Load URL&quot;">
-                     <VBox.margin>
+            </StackPane>
+         </content>
+      </Tab>
+    <Tab fx:id="logTab" text="Logs">
+         <content>
+            <BorderPane prefHeight="200.0" prefWidth="200.0">
+               <center>
+                  <TextArea fx:id="logArea" editable="false" prefHeight="200.0" prefWidth="200.0" promptText="Try downloading a video!" wrapText="true" BorderPane.alignment="CENTER">
+                     <BorderPane.margin>
                         <Insets />
-                     </VBox.margin></Label>
-               </children>
-               <padding>
-                  <Insets left="40.0" right="20.0" />
-               </padding>
-               <opaqueInsets>
-                  <Insets />
-               </opaqueInsets>
-               <BorderPane.margin>
-                  <Insets right="40.0" top="30.0" />
-               </BorderPane.margin>
-            </VBox>
-         </center>
-      </BorderPane>
-      <TabPane prefHeight="0.0" prefWidth="799.0" tabClosingPolicy="UNAVAILABLE">
-        <tabs>
-          <Tab text="Downloader" />
-          <Tab text="Settings" />
-        </tabs>
-         <StackPane.margin>
-            <Insets bottom="365.0" />
-         </StackPane.margin>
-      </TabPane>
-   </children>
-</StackPane>
+                     </BorderPane.margin>
+                     <font>
+                        <Font name="Monospaced Regular" size="12.0" />
+                     </font>
+                  </TextArea>
+               </center>
+               <bottom>
+                  <HBox prefHeight="40.0" prefWidth="640.0" spacing="25.0" style="-fx-background-color: white;" BorderPane.alignment="CENTER">
+                     <children>
+                        <Region prefHeight="25.0" prefWidth="144.0" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="killButton" disable="true" mnemonicParsing="false" style="-fx-border-color: pink; -fx-border-radius: 3px;" text="KILL!!!!!!!!!" />
+                     </children>
+                     <padding>
+                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                     </padding>
+                  </HBox>
+               </bottom>
+            </BorderPane>
+         </content>
+      </Tab>
+    <Tab fx:id="settingsTab" text="Settings" />
+   </tabs>
+</TabPane>
