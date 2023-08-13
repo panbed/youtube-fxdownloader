@@ -1,10 +1,10 @@
 package com.panbed.ytdownloader;
 
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -15,10 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.json.*;
 import org.apache.commons.io.*;
 
@@ -79,43 +82,6 @@ public class DownloaderController {
             default -> System.out.println("uhhhhhhhh default");
         }
     }
-
-    // deprecated for showStatus
-//    @FXML
-//    protected void showQuestion() {
-//        thumbPreview.setImage(new Image("question.png"));
-//        thumbBackgroundPreview.setImage(null);
-//        titleLabel.setText("Invalid YouTube URL");
-//        authorLabel.setText("Found a valid YouTube URL, but can't get any info from it. The video might be private, or it's just not a real video.");
-//        downloadButton.setDisable(true);
-//    }
-//
-//    @FXML
-//    protected void showDefault() {
-//        thumbPreview.setImage(new Image("default.png"));
-//        thumbBackgroundPreview.setImage(null);
-//        titleLabel.setText("fxdownloader");
-//        authorLabel.setText("Enter a URL, then select \"Download\"");
-//        downloadButton.setDisable(true);
-//    }
-//
-//    @FXML
-//    protected void showLoading() {
-//        thumbPreview.setImage(new Image("loading.png"));
-//        thumbBackgroundPreview.setImage(null);
-//        titleLabel.setText("Let's peep this out...");
-//        authorLabel.setText("Attempting to get video info...");
-//        downloadButton.setDisable(true);
-//    }
-//
-//    @FXML
-//    protected void showError() {
-//        thumbPreview.setImage(new Image("error.png"));
-//        thumbBackgroundPreview.setImage(null);
-//        titleLabel.setText("Unable to parse URL");
-//        authorLabel.setText("Double check your URL and try again");
-//        downloadButton.setDisable(true);
-//    }
 
     @FXML
     protected void showThumbnail(String id) throws IOException {
@@ -196,7 +162,15 @@ public class DownloaderController {
     public void checkAndCreateFiles() {
         // if it doesnt exist then create a json config and store it somewhere in the home directory
         JSONObject jsonConfig = new JSONObject();
-        jsonConfig.put("ytdlp_location", "");
+        System.out.println("need to get yt-dlp exe...");
+
+//        FileChooser fileChooser = new FileChooser();
+//        fileChooser.setTitle("Select where the yt-dlp executable is located");
+//        fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+//        File selectedExecutable = fileChooser.showOpenDialog(urlTextField.getScene().getWindow());
+
+//        jsonConfig.put("ytdlp_location", selectedExecutable.getAbsolutePath());
+        jsonConfig.put("ytdlp_location", "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe");
         jsonConfig.put("last_directory", System.getProperty("user.home"));
         jsonConfig.put("audio_format", "mp3");
         jsonConfig.put("video_format", "mp4");
@@ -214,6 +188,12 @@ public class DownloaderController {
         }
 
         System.out.println("Created JSON config file at " + String.format("%s/.fxdownloader/config.json", System.getProperty("user.home")));
+    }
+
+    public void ytdlpCheck(JSONObject jsonObject) throws IOException {
+        if (jsonObject.get("ytdlp_location").equals("")) {
+            System.out.println("yt-dlp not found, running ytdlpCheck()...");
+        }
     }
 
     public JSONObject getJSONObject() throws IOException {
@@ -253,6 +233,62 @@ public class DownloaderController {
         return new JSONObject(json);
     }
 
+    public boolean isLatestVersion() {
+        AtomicBoolean isLatest = new AtomicBoolean(false);
+
+        try {
+            String exeLocation = getJSONConfigAttr("ytdlp_location");
+            System.out.println(exeLocation);
+
+            if (exeLocation.equalsIgnoreCase("")) {
+                System.out.println("yt-dlp not found!");
+            }
+
+
+            String url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"; // oh my god github has an api limit i forgot
+            String json = IOUtils.toString(URI.create(url), StandardCharsets.UTF_8); // get latest version from github
+            JSONObject jsonObject = new JSONObject(json);
+            System.out.println(jsonObject.get("name"));
+            String ytdlpGithubVersion = jsonObject.get("name").toString();
+            final StringBuffer ytdlpVersionBuffer = new StringBuffer();
+
+            Task<Void> checkLatestVersion = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    ProcessBuilder pb = new ProcessBuilder(exeLocation, "--version").redirectErrorStream(true);
+                    Process process = pb.start();
+
+                    StringBuilder result = new StringBuilder(80);
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                        while (true) {
+                            String line = in.readLine();
+                            if (line == null)
+                                break;
+                            result.append(line).append(System.getProperty("line.separator"));
+
+                        }
+                    }
+
+                    ytdlpVersionBuffer.append("yt-dlp " + result);
+
+                    return null;
+                }
+            };
+
+            checkLatestVersion.setOnSucceeded(e -> {
+                if (ytdlpGithubVersion.equalsIgnoreCase(ytdlpVersionBuffer.toString())) isLatest.set(true);
+            });
+
+
+        } catch (IOException e) {
+            System.out.println("death (ioexception) ");
+        } catch (JSONException e) {
+            System.out.println("Unable to find latest version of yt-dlp!");
+        }
+
+        return isLatest.get();
+    }
+
     public void updateLog(String text) {
         Platform.runLater(() -> {
             logArea.clear();
@@ -261,7 +297,7 @@ public class DownloaderController {
     }
 
     public boolean downloadVideo(File location, String id) throws IOException {
-        String exeLocation = "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe";
+        String exeLocation = getJSONConfigAttr("ytdlp_location");
         String directoryLocation;
 
         if (location != null) {
@@ -280,15 +316,8 @@ public class DownloaderController {
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                String coolSkull =
-                        """
-                        _____
-                       /     \\
-                      | () () |
-                       \\  ^  /
-                        |||||
-                        |||||
-                        """; // yo this is a crazy skull
+                String coolSkull = "skull in progress";
+                        // yo this    was    a crazy skull
                 Platform.runLater(() -> {
                     logArea.appendText(String.format("%s\n\n** HERE LIES YT-DLP **\n\nTime of death: %s", coolSkull, new Date()));
                 });
@@ -346,41 +375,34 @@ public class DownloaderController {
         afChoiceBox.setValue(getJSONConfigAttr("audio_format"));
         vfChoiceBox.setValue(getJSONConfigAttr("video_format")); // todo: fix video stuff, it still only does audio stuff for now
 
-        afChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener() {
-            @Override
-            public void changed(ObservableValue observable, Object oldValue, Object newValue) {
-                System.out.println(afChoiceBox.getSelectionModel().getSelectedItem());
-                try {
-                    setJSONConfigAttr("audio_format", (String) newValue);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+        afChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            System.out.println(afChoiceBox.getSelectionModel().getSelectedItem());
+            try {
+                setJSONConfigAttr("audio_format", (String) newValue);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         });
 
-        vfChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener() {
-            @Override
-            public void changed(ObservableValue observable, Object oldValue, Object newValue) {
-                try {
-                    setJSONConfigAttr("video_format", (String) newValue);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+        vfChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            try {
+                setJSONConfigAttr("video_format", (String) newValue);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         });
-
-
-
     }
 
     @FXML
     public void initialize() throws IOException {
         showStatus("default");
 
-        JSONObject config = getJSONObject();
-        System.out.println(config.getString("last_directory"));
-
+        JSONObject config = getJSONObject(); // get json obj, if it doesnt exist it gets created
+//        System.out.println(isLatestVersion()); // ugh ok ill fix this later but i cant use github api since ill go over rate limits so maybe ill see if i can use built-in yt-dlp functions
+        // maybe i can just live with the api limit and set islatest to true always if it fails or something
         initalizeChoiceBoxes();
+
+//        ytdlpCheck(config); // this i need to also fix, maybe just make a tab for downloading yt-dlp?
 
         urlTextField.textProperty().addListener((observable -> {
             String url = urlTextField.getText();
