@@ -164,11 +164,12 @@ public class DownloaderController {
         JSONObject jsonConfig = new JSONObject();
         System.out.println("need to get yt-dlp exe...");
 
+        // TODO: fix filechooser, i have no idea why its not working right now it just says getScene() returns null
 //        FileChooser fileChooser = new FileChooser();
 //        fileChooser.setTitle("Select where the yt-dlp executable is located");
 //        fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
 //        File selectedExecutable = fileChooser.showOpenDialog(urlTextField.getScene().getWindow());
-
+//
 //        jsonConfig.put("ytdlp_location", selectedExecutable.getAbsolutePath());
         jsonConfig.put("ytdlp_location", "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe");
         jsonConfig.put("last_directory", System.getProperty("user.home"));

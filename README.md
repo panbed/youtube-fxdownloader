@@ -1,4 +1,4 @@
 # youtube-fxdownloader
-Simple frontend for yt-dlp, using JavaFX.
+Simple frontend for yt-dlp, using JavaFX. (Currently in progress)
 
-![youtube-fxdownloader screenshot](https://github.com/panbed/youtube-fxdownloader/assets/106042766/5b92f421-fa1e-4263-84ea-cd6748bc9d9b)
+![youtube-fxdownloader screenshot](src%2Fmain%2Fresources%2Fimages%2Fscreenshot.png)
