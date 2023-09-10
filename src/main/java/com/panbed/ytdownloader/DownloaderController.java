@@ -143,6 +143,7 @@ public class DownloaderController {
 
         downloadVideoTask.setOnFailed(e -> {
             System.out.println("failure .........");
+            logArea.appendText(String.format("Failed to find yt-dlp.exe, check %s\\.fxdownloader\\ and see if yt-dlp.exe is in the folder.", System.getProperty("user.home")));
             downloadButton.setDisable(false);
             urlButton.setDisable(false);
             killButton.setDisable(true);
@@ -171,7 +172,7 @@ public class DownloaderController {
 //        File selectedExecutable = fileChooser.showOpenDialog(urlTextField.getScene().getWindow());
 //
 //        jsonConfig.put("ytdlp_location", selectedExecutable.getAbsolutePath());
-        jsonConfig.put("ytdlp_location", "C:\\Users\\dev\\IdeaProjects\\ytDownloader\\src\\main\\resources\\programs\\yt-dlp.exe");
+        jsonConfig.put("ytdlp_location", String.format("%s/.fxdownloader/yt-dlp.exe", System.getProperty("user.home")));
         jsonConfig.put("last_directory", System.getProperty("user.home"));
         jsonConfig.put("audio_format", "mp3");
         jsonConfig.put("video_format", "mp4");
@@ -404,6 +405,19 @@ public class DownloaderController {
         initalizeChoiceBoxes();
 
 //        ytdlpCheck(config); // this i need to also fix, maybe just make a tab for downloading yt-dlp?
+
+        File exeFile = new File(String.format("%s/.fxdownloader/yt-dlp.exe", System.getProperty("user.home")));
+        if (!exeFile.exists()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Couldn't find yt-dlp.exe!");
+            alert.setHeaderText("Missing yt-dlp executable");
+            alert.setContentText(String.format("Couldn't find yt-dlp.exe in %s\\.fxdownloader\\\nCurrently, this program cannot download yt-dlp by itself, so just download it yourself and put it there please :3", System.getProperty("user.home")));
+            alert.showAndWait().ifPresent(rs -> {
+                if (rs == ButtonType.OK) {
+                    System.out.println("acknowledged - hopefully they download it");
+                }
+            });
+        }
 
         urlTextField.textProperty().addListener((observable -> {
             String url = urlTextField.getText();
