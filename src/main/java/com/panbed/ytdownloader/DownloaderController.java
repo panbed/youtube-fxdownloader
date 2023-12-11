@@ -1,5 +1,8 @@
 package com.panbed.ytdownloader;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -11,10 +14,16 @@ import javafx.scene.image.ImageView;
 
 import java.io.*;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.Key;
 import java.util.Date;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,11 +31,13 @@ import java.util.regex.Pattern;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.json.*;
 import org.apache.commons.io.*;
 
 public class DownloaderController {
     public ImageView thumbPreview;
+    public ImageView thumbPreviewTemp;
     public Button downloadButton;
     public Button urlButton;
     public TextField urlTextField;
@@ -45,6 +56,14 @@ public class DownloaderController {
     public ChoiceBox afChoiceBox;
     public ChoiceBox vfChoiceBox;
 
+    public Image defaultImage = new Image("file:src/main/resources/images/default.png");
+    public Image errorImage = new Image("file:src/main/resources/images/error.png");
+    public Image loadingImage = new Image("file:src/main/resources/images/loading.png");
+    public Image questionImage = new Image("file:src/main/resources/images/question.png");
+    public Image lastImage;
+
+    public boolean justLaunched = true;
+
     // latest yt-dlp
     // https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
 
@@ -56,30 +75,54 @@ public class DownloaderController {
 
     @FXML
     protected void showStatus(String status) {
+        String lastImageURL = lastImage.getUrl();
+        thumbPreviewTemp.setImage(lastImage);
+        thumbPreviewTemp.setOpacity(1.0);
+        thumbPreview.setOpacity(0);
         thumbBackgroundPreview.setImage(null);
         downloadButton.setDisable(true);
+
         switch (status) {
             case "default" -> { // default
-                thumbPreview.setImage(new Image("default.png"));
+                thumbPreview.setImage(defaultImage);
                 titleLabel.setText("fxdownloader");
                 authorLabel.setText("Enter a URL, then select \"Download\"");
             }
             case "error" -> { // error
-                thumbPreview.setImage(new Image("error.png"));
+                thumbPreview.setImage(errorImage);
+
                 titleLabel.setText("Unable to parse URL");
                 authorLabel.setText("Double check your URL and try again");
             }
             case "loading" -> { // loading
-                thumbPreview.setImage(new Image("loading.png"));
+                thumbPreview.setImage(loadingImage);
+
                 titleLabel.setText("Let's peep this out...");
                 authorLabel.setText("Attempting to get video info...");
             }
             case "question" -> { // question
-                thumbPreview.setImage(new Image("question.png"));
+                thumbPreview.setImage(questionImage);
                 titleLabel.setText("Invalid YouTube URL");
                 authorLabel.setText("Found a valid YouTube URL, but can't get any info from it. The video might be private, or it's just not a real video.");
             }
             default -> System.out.println("uhhhhhhhh default");
+        }
+
+        lastImage = thumbPreview.getImage();
+
+        if (!Objects.equals(lastImageURL, lastImage.getUrl()) || justLaunched) {
+            FadeTransition thumbPreviewTransition = new FadeTransition(Duration.millis(500), thumbPreview);
+            thumbPreviewTransition.setFromValue(0);
+            thumbPreviewTransition.setToValue(1.0);
+
+            FadeTransition thumbPreviewTempTransition = new FadeTransition(Duration.millis(500), thumbPreviewTemp);
+            thumbPreviewTempTransition.setFromValue(1.0);
+            thumbPreviewTempTransition.setToValue(0);
+
+            thumbPreviewTransition.play();
+            thumbPreviewTempTransition.play();
+
+            justLaunched = false;
         }
     }
 
@@ -193,8 +236,58 @@ public class DownloaderController {
     }
 
     public void ytdlpCheck(JSONObject jsonObject) throws IOException {
-        if (jsonObject.get("ytdlp_location").equals("")) {
-            System.out.println("yt-dlp not found, running ytdlpCheck()...");
+        File exeFile = new File(getJSONConfigAttr("ytdlp_location"));
+        System.out.println(exeFile);
+        if (!exeFile.exists()) {
+            ButtonType downloadButton = new ButtonType("Download", ButtonBar.ButtonData.YES);
+            ButtonType okButton = new ButtonType("Skip", ButtonBar.ButtonData.NO);
+            Alert alert = new Alert(Alert.AlertType.WARNING, String.format("Couldn't find yt-dlp.exe in %s\\.fxdownloader\\\nWould you like to have the program try downloading it automagically?", System.getProperty("user.home")), downloadButton, okButton);
+
+            alert.setTitle("Couldn't find yt-dlp.exe!");
+            alert.setHeaderText("Missing yt-dlp executable");
+
+            Optional<ButtonType> result = alert.showAndWait();
+
+            if (result.orElse(okButton) == downloadButton) {
+                tabPane.getSelectionModel().select(logTab);
+                logArea.appendText("Attempting to download yt-dlp from GitHub...\n");
+                // TODO: maybe add a sha256 checksum check or something
+
+                String sourceURL = "https://github.com/yt-dlp/yt-dlp-master-builds/releases/latest/download/yt-dlp.exe";
+
+                final CountDownLatch downloadFileLatch = new CountDownLatch(1);
+
+                new Thread(() -> {
+                    try {
+                        FileUtils.copyURLToFile(new URL(sourceURL), exeFile);
+                    }
+                    catch (IOException e) {
+                        logArea.appendText("\n!! UNABLE TO DOWNLOAD YT-DLP !!\n\n");
+                        logArea.appendText("Worst case scenario, try downloading yt-dlp from their GitHub: https://github.com/yt-dlp/yt-dlp/releases");
+                    }
+                    finally {
+                        downloadFileLatch.countDown();
+                    }
+                }).start();
+
+                // TODO: if i was cooler i would figure out how to put  a progress bar or something
+//                logArea.appendText(String.format("Downloaded %.2f MB of yt-dlp...\n", (double) exeFile.length() / 1000000));
+
+                new Thread(() -> {
+                    try {
+                        downloadFileLatch.await();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    Platform.runLater(() -> {
+                        if (exeFile.exists()) {
+                            logArea.appendText(String.format("yt-dlp downloaded! (%.2f MB)\n", (double) exeFile.length() / 1000000));
+                        }
+                    });
+                }).start();
+
+            }
         }
     }
 
@@ -246,7 +339,6 @@ public class DownloaderController {
                 System.out.println("yt-dlp not found!");
             }
 
-
             String url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"; // oh my god github has an api limit i forgot
             String json = IOUtils.toString(URI.create(url), StandardCharsets.UTF_8); // get latest version from github
             JSONObject jsonObject = new JSONObject(json);
@@ -267,7 +359,6 @@ public class DownloaderController {
                             if (line == null)
                                 break;
                             result.append(line).append(System.getProperty("line.separator"));
-
                         }
                     }
 
@@ -341,14 +432,6 @@ public class DownloaderController {
         }
 
         return false;
-
-//        try (InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream())) {
-//            int c;
-//            while ((c = inputStreamReader.read()) >= 0) {
-//                updateLog(String.valueOf((char) c));
-//            }
-//        }
-//        return result.toString();
     }
 
     public String getVideoID(String url) {
@@ -397,27 +480,16 @@ public class DownloaderController {
 
     @FXML
     public void initialize() throws IOException {
+        lastImage = defaultImage;
         showStatus("default");
+        thumbPreviewTemp.setImage(null);
 
         JSONObject config = getJSONObject(); // get json obj, if it doesnt exist it gets created
 //        System.out.println(isLatestVersion()); // ugh ok ill fix this later but i cant use github api since ill go over rate limits so maybe ill see if i can use built-in yt-dlp functions
         // maybe i can just live with the api limit and set islatest to true always if it fails or something
         initalizeChoiceBoxes();
 
-//        ytdlpCheck(config); // this i need to also fix, maybe just make a tab for downloading yt-dlp?
-
-        File exeFile = new File(String.format("%s/.fxdownloader/yt-dlp.exe", System.getProperty("user.home")));
-        if (!exeFile.exists()) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Couldn't find yt-dlp.exe!");
-            alert.setHeaderText("Missing yt-dlp executable");
-            alert.setContentText(String.format("Couldn't find yt-dlp.exe in %s\\.fxdownloader\\\nCurrently, this program cannot download yt-dlp by itself, so just download it yourself and put it there please :3", System.getProperty("user.home")));
-            alert.showAndWait().ifPresent(rs -> {
-                if (rs == ButtonType.OK) {
-                    System.out.println("acknowledged - hopefully they download it");
-                }
-            });
-        }
+        ytdlpCheck(config); // this i need to also fix, maybe just make a tab for downloading yt-dlp?
 
         urlTextField.textProperty().addListener((observable -> {
             String url = urlTextField.getText();
@@ -433,7 +505,7 @@ public class DownloaderController {
                         showStatus("question");
                     }
                 }
-                else if (url.equals("")) {
+                else if (url.isEmpty()) {
                     showStatus("default");
                 }
                 else {
